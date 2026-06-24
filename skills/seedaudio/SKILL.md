@@ -267,7 +267,7 @@ seedaudio-cli --jq '.audio_path' synthesize -p "..." --voice vv --out a.mp3
 - **有声书/旁白**:沉稳中性音色 + `standard` 求稳 + 按章节分段 + 段间 `--silence-ms 300`。
 - **新闻/播报**:专业播报音色 + `--instruct "专业清晰的播报语气"` + `--speech-rate 5~15`。
 - **广告/营销**:有感染力音色 + `expressive` + 情绪指令 + 关键词前后留停顿。
-- **多角色对话**:每个角色一个音色,逐句分别合成再按顺序拼接(见 Part 3.3)。
+- **多角色对话**:每个角色一个音色,逐句分别合成再按顺序拼接(见 Part 3.2)。
 
 完整音色场景对照、指令库、规范化清单在 `references/voices-and-style.md`。
 
