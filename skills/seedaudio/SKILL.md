@@ -1,7 +1,7 @@
 ---
 name: seedaudio
 version: 0.1.0
-description: "Volcengine 豆包语音合成大模型 2.0 文本转语音端到端工作流：写好"为听而写"的合成文本 + 用 seedaudio-cli 落地成音频。当用户提到语音合成、文本转语音、TTS、配音、旁白、有声书、AI 配音、播报、念稿、读出来、生成语音、豆包语音、音色、长文本转音频、多角色对话配音等场景时使用。"
+description: "当用户要做语音合成 / 文本转语音 / TTS,要配音、旁白、有声书、播报、念稿,或要写好中文 TTS 文案、选音色与语气、做多角色对话配音、把长文一次转成音频时使用。基于火山引擎豆包语音合成大模型 2.0(seedaudio-cli)。相关词:AI 配音、读出来、生成语音、豆包语音、音色、有声阅读、广播剧。"
 metadata:
   requires:
     bins: ["seedaudio-cli"]
@@ -16,15 +16,22 @@ metadata:
 
 完整闭环:**用户给文本/意图 → Part 2 改写成可听文本 + 选音色/语气 → Part 1 跑 CLI → 落盘音频(多角色用 `dialogue` 自动拼接)**。
 
-**核心原则**:
+**核心原则**(其余自检见 §1.11 红线):
 - 合成文本 ≠ 阅读文本。为"耳朵"写,不是为"眼睛"写:`3.14` 写成"三点一四","$5" 写成"五美元",用标点控制停顿。
-- 跑合成一律走 `seedaudio-cli`,不手拼 curl,不绕开 envelope/退出码。
 - **Claude 听不见音频**——只能验文件存在 + 大小 + 报元数据,需要"听"时用 `ffprobe` 报时长,别假装听过。
 - 这是**流式**接口,单次请求就能合成**很长**的整段(实测 4000+ 汉字一把出,约 14 分钟音频),普通文章/章节直接 `synthesize --text-file` 即可,**不用分段**。书本级超长(上万字)走官方异步长文本接口(本 CLI 暂未封装)。
 
 ---
 
 # Part 1 — 怎么调用 CLI(工程层)
+
+**选哪个命令**:
+
+| 想做 | 命令 |
+|---|---|
+| 念稿 / 单段 / 整段长文(任意长度) | `synthesize`(§3.1) |
+| 多角色对话配音(每行不同音色) | `dialogue`(§3.2) |
+| 查音色 / 多 profile 配置 | `voices` / `config` |
 
 ## 1.1 前置
 
@@ -142,24 +149,18 @@ seedaudio-cli --jq '.audio_path' synthesize -p "..." --voice vv --out a.mp3
 - `NETWORK_ERROR`(exit 5)→ 重试;多次失败核对 `config show` 的 endpoint。
 - `INTERNAL`(exit 10)→ bug,带 `--verbose` 跑一次拿 stacktrace,报 issue。
 
-## 1.11 Red Flags — 出现立即停下
+## 1.11 红线 — 动手前自检,出现立即停下
 
-- 我正要 `Read out.mp3` → 停,Read 读不出音频,用 ffprobe 报元数据。
-- 我正要为了"长文"去手动切段/逐句调用 → 停,普通长文 `synthesize --text-file` 一次就出整段,别无谓拆分。
-- 我正要把数字/符号/英文缩写原样丢给 TTS → 停,先按 Part 2.3 规范化成"读法"。
-- 我正要凭记忆汇报"已生成"→ 停,先确认 `audio_path` 存在 + `bytes` 非零。
-- 我正要给复刻音色用 `--instruct` 但没加 `-m seed-tts-2.0-expressive` → 停,复刻音色的指令需要 expressive。
-- 我正要在一段 `dialogue` 里给同一角色换音色 → 停,同角色固定一个音色,否则像"换了人"。
-- 我正要手拼 curl 调 openspeech → 停,走 CLI,envelope/错误路径才统一。
+- 别 `Read` 音频文件 → 读不出,用 `ffprobe` 报时长/元数据。
+- 别凭记忆说"已生成" → 先确认 `audio_path` 存在 + `bytes` 非零。
+- 别把数字/符号/英文缩写原样丢给 TTS → 先按 Part 2.3 规范化成"读法"。
+- 别为普通长文手动切段/逐句调用 → `synthesize --text-file` 一次就出整段(流式接口)。
+- 复刻音色用 `--instruct`/标签 → 必须加 `-m seed-tts-2.0-expressive`。
+- 一段 `dialogue` 里同一角色别换音色(否则像"换了人")。
+- 别手拼 curl 调 openspeech → 走 CLI,envelope/退出码才统一。
+- 别做 ASR(本 CLI 只合成);别乱挑音色(不确定就 `voices` 查 / 让用户去控制台确认);别把 `X-Api-Key` 写进 shell history。
 
-## 1.12 不要做
-
-- 不要做语音识别(ASR,语音→文本)——本 CLI 只做合成(文本→语音)。
-- 不要把 `X-Api-Key` 写进 shell history,用 `config init` 或 env。
-- 不要默认乱挑音色——不确定就 `voices` 查或让用户去控制台确认 id。
-- 不要为了普通长文去手动切段——`synthesize --text-file` 一次就出整段(流式接口)。
-
-## 1.13 安全与预期
+## 1.12 安全与预期
 
 - 合成是**同步**的(几百 ms ~ 几秒返回),没有任务轮询。文本越长、采样率越高,稍慢。
 - 计费看 `usage.text_words`(含标点);`context_texts` 指令文本不计费。
@@ -354,18 +355,3 @@ seedaudio-cli dialogue --script play.txt \
 
 ### Step 6 — 微调
 用户可要求:换音色/语气、调语速音量音调、改某段文本、长文重切段、换格式。
-
----
-
-# 注意事项汇总
-
-- **合成文本必须先规范化**:数字/金额/符号/缩写展开成读法,用标点控制停顿(Part 2.3 / 2.4)。
-- **Claude 听不见音频**:验文件 + 大小 + 报元数据 + 可选 ffprobe;别假装听过,别 Read 音频文件。
-- **鉴权是 `X-Api-Key`**(语音技术控制台),不是 Seedance 的 `ARK_API_KEY`。
-- **音色 id 以控制台音色库为准**;`voices` 只是精选子集;复刻音色走 `resource_id=seed-icl-2.0`。
-- **普通长文一次合成**(流式接口,实测 4000+ 汉字);书本级超长走异步长文本接口。多角色对话用 `dialogue`,角色↔音色映射固定。
-- **复刻音色用 `--instruct`/标签**需要 `-m seed-tts-2.0-expressive`;要稳用 `standard`。
-- **全局 flag 放子命令前**(`--dry-run`/`--jq`/`--profile`/`--api-key`/`--resource-id`)。
-- **拼接用无损 wav**,统一参数;别用有损 mp3 反复拼。
-- 不要做 ASR(语音识别),本 CLI 只做合成;不要手拼 curl,走 CLI 统一 envelope/退出码。
-- 不要把 `X-Api-Key` 写进 shell history。
