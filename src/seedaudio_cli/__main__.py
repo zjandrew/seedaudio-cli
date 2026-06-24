@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sys
+from importlib.metadata import PackageNotFoundError, version
 from typing import Any
 
 import click
@@ -9,7 +10,11 @@ import click
 from seedaudio_cli.framework.envelope import Envelope, Success, apply_jq, render
 from seedaudio_cli.framework.errors import CliError, exit_code_for, translate
 
-__version__ = "0.1.0"
+try:
+    # Single source of truth: the version declared in pyproject.toml / package metadata.
+    __version__ = version("zjandrew-seedaudio-cli")
+except PackageNotFoundError:  # not installed (e.g. running from a source checkout)
+    __version__ = "0.0.0+local"
 
 
 class _Root(click.Group):
