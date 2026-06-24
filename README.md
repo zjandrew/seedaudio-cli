@@ -77,8 +77,13 @@ seedaudio-cli synthesize -p "新闻播报示例" --voice zh_male_liufei_uranus_b
 seedaudio-cli synthesize -p "今天真是太开心啦" --voice zh_female_vv_uranus_bigtts \
   -m seed-tts-2.0-expressive --instruct "用特别开心、撒娇的语气说" --out happy.mp3
 
-# Long text from a file
-seedaudio-cli synthesize --text-file chapter1.txt --voice zh_male_yangguangqingnian_uranus_bigtts --out ch1.mp3
+# Long text (auto-split into segments, synthesize each, concatenate into one file)
+seedaudio-cli narrate --text-file chapter1.txt --voice zh_male_xuanyijieshuo_uranus_bigtts \
+  --silence-ms 300 --out chapter1.mp3
+# (ffmpeg used for concat when present; --encoding wav/pcm concatenates with no ffmpeg)
+
+# Single short utterance from a file
+seedaudio-cli synthesize --text-file note.txt --voice zh_male_yangguangqingnian_uranus_bigtts --out note.mp3
 
 # Word-level timestamps alongside the audio
 seedaudio-cli synthesize -p "字幕对齐示例" --voice zh_female_vv_uranus_bigtts \

@@ -293,57 +293,42 @@ seedaudio-cli synthesize -m seed-tts-2.0-standard \
   --out weather.mp3
 ```
 
-## 3.2 长文本分段合成 + 拼接(本 SKILL 主战场)
+## 3.2 长文本一条命令落地:`narrate`(本 SKILL 主战场)
 
 **触发词**:"把这篇文章读出来"、"有声书"、"长文转音频"、"整段念出来"、"几千字配音"。
 
-### 产物目录
-
-```
-audio/<topic>/
-├── seg-01.wav
-├── seg-02.wav
-├── seg-03.wav
-└── final.wav        ← 拼接成片
-```
-
-### Step 1 — 切段
-
-把长文按句号/段落切成每段 ≤ ~300 汉字的块。每段先按 Part 2.3 规范化。**复述切段方案给用户确认**(共几段、每段大意),别闷头开跑。
-
-### Step 2 — 逐段合成(循环 i=1…N,参数跨段保持一致)
+超过单次上限(~300 汉字)的长文,**优先用 `narrate`**——它内部自动:按标点切段(每段 ≤ `--max-bytes` 字节,默认 900)→ 逐段合成(跨段同音色/同参数)→ 拼接成一个成片。你**不用手动切、不用手写 ffmpeg**。
 
 ```bash
-seedaudio-cli synthesize -m seed-tts-2.0-standard \
-  -p "<第 i 段规范化文本>" \
-  --voice zh_male_yangguangqingnian_uranus_bigtts \
-  --encoding wav --sample-rate 24000 \
-  --silence-ms 300 \
-  --out audio/<topic>/seg-0{i}.wav
+# 先按 Part 2.3 把长文规范化(数字/符号展开、停顿标点),写进一个 txt
+seedaudio-cli narrate \
+  --text-file story.txt \
+  --voice zh_male_xuanyijieshuo_uranus_bigtts \
+  --speech-rate 0 --silence-ms 300 \
+  --keep-segments \
+  --out audio/story.mp3
 ```
 
-读 stdout envelope 确认每段 `audio_path` + `bytes`。**音色 / `--speech-rate` / `--encoding` / `--sample-rate` 跨段不变**。
+读 stdout envelope:`segments`(切了几段)、`audio_path`、`bytes`、`concat`(`ffmpeg` / `wav` / `pcm`)、`usage.text_words`。进度逐段打到 stderr。
 
-### Step 3 — 拼接
+**拼接方式**:装了 `ffmpeg` 就用 ffmpeg(支持 mp3/wav/ogg);没装 ffmpeg 时 `--encoding wav` 或 `pcm` 用标准库无依赖拼接,`mp3`/`ogg_opus` 会**直接报 `INVALID_INPUT`** 让你装 ffmpeg 或换 wav——不会偷偷产出撕裂文件。
 
-用 wav(无损)逐段合成后,ffmpeg concat:
+**关键 flag**:
+- `--max-bytes N`:每段字节上限(默认 900,留了余量;API 硬上限 ~1024)。
+- `--keep-segments`:保留分段文件到 `<out>.segments/`,某段不满意只重念那一段再重拼;不传则用临时目录、拼完即删。
+- `--encoding`:长文+无 ffmpeg 选 `wav`;有 ffmpeg 默认 mp3 即可。
+- 文本规范化仍是你的活——`narrate` 只切不改写,数字/符号/多音字要先按 Part 2.3 处理好。
 
-```bash
-ffmpeg -f concat -safe 0 \
-  -i <(for f in audio/<topic>/seg-*.wav; do echo "file '$PWD/$f'"; done) \
-  -c copy audio/<topic>/final.wav
-```
+### 必须做 / 必须不做(长文)
 
-> 不同采样率/编码的段不能 `-c copy` 直接拼,会失败或撕裂——所以 Step 2 必须统一参数。某段重念时,只重生那一段再重拼。
+- ✅ 先规范化文本(数字/符号/多音字),再交给 `narrate`
+- ✅ 长文**复述切段预期**给用户(可先 `--dry-run` 看 `segments` 和每段 `preview`)
+- ✅ 重念用 `--keep-segments`,只补那一段
+- ❌ 把整篇塞进 `synthesize -p`(会超长度上限报错)——长文走 `narrate`
+- ❌ 在 `narrate` 里中途想换音色/语速(整篇统一;要换风格就拆成多次 `narrate` 再自己拼)
+- ❌ 没装 ffmpeg 还硬要 mp3 长文——换 `--encoding wav`
 
-### 必须做 / 必须不做(分段)
-
-- ✅ 每段文本独立规范化、独立自包含
-- ✅ 跨段统一音色 / 语速 / 编码 / 采样率
-- ✅ 每段成功后告诉用户「seg-i 已落盘」
-- ❌ 中途换音色 / 换语速 / 换采样率(拼接撕裂)
-- ❌ 一段塞超过长度上限(API 报错)
-- ❌ 用有损 mp3 反复拼接(累积音质损失;长文优先 wav 拼完再转 mp3)
+> **手动模式(可选,需要逐段精细控制时)**:也可以自己用 `synthesize` 逐段(每段统一 `--voice/--encoding/--sample-rate`)落到 `seg-0{i}.wav`,再 `ffmpeg -f concat -safe 0 -i list.txt -c copy final.wav` 拼。`narrate` 就是把这套固化了,常规长文不必手动。
 
 ## 3.3 多角色对话配音
 
