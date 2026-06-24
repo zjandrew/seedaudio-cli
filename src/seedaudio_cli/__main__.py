@@ -79,12 +79,10 @@ def _register_commands() -> None:
     # keep import side effects out of plain module load.
     from seedaudio_cli.commands import config as _config
     from seedaudio_cli.commands import dialogue as _dialogue
-    from seedaudio_cli.commands import narrate as _narrate
     from seedaudio_cli.commands import synthesize as _synthesize
     from seedaudio_cli.commands import voices as _voices
 
     root.add_command(_synthesize.synthesize)
-    root.add_command(_narrate.narrate)
     root.add_command(_dialogue.dialogue)
     root.add_command(_voices.voices)
     root.add_command(_config.config)

@@ -79,15 +79,10 @@ seedaudio-cli synthesize -p "新闻播报示例" --voice zh_male_liufei_uranus_b
 seedaudio-cli synthesize -p "今天真是太开心啦" --voice zh_female_vv_uranus_bigtts \
   -m seed-tts-2.0-expressive --instruct "用特别开心、撒娇的语气说" --out happy.mp3
 
-# Long text — the streaming endpoint handles multi-thousand-char text in ONE request,
-# so a whole article/chapter just works with synthesize:
+# Long text — the streaming endpoint returns a COMPLETE file in one request, even for
+# thousands of chars / minutes of audio, so a whole article or chapter just works:
 seedaudio-cli synthesize --text-file chapter1.txt --voice zh_male_xuanyijieshuo_uranus_bigtts --out chapter1.mp3
-
-# narrate is for *very* long text, per-segment editing (--keep-segments), or --timeout
-# control: it auto-splits on punctuation, synthesizes each chunk, and concatenates.
-seedaudio-cli narrate --text-file book.txt --voice zh_male_xuanyijieshuo_uranus_bigtts \
-  --silence-ms 300 --keep-segments --out book.mp3
-# (ffmpeg used for concat when present; --encoding wav/pcm concatenates with no ffmpeg)
+# (book-length >tens-of-thousands of chars: use Volcengine's async long-text API, not wrapped here)
 
 # Multi-role dialogue: each line `角色: 台词`, mapped to a voice per role
 seedaudio-cli dialogue --script play.txt \
