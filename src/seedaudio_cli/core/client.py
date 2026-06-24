@@ -18,6 +18,16 @@ RESOURCE_IDS = {
 # Optional req_params.model values (used mainly with cloned voices).
 MODEL_CHOICES = {"seed-tts-2.0-standard", "seed-tts-2.0-expressive"}
 
+# Cloned (ICL) voice ids carry these prefixes and must route through seed-icl-2.0.
+CLONED_VOICE_PREFIXES = ("S_", "ICL_", "saturn_")
+
+
+def resource_id_for_voice(voice_id: str) -> str:
+    """Infer the X-Api-Resource-Id from a voice id (cloned vs official)."""
+    if voice_id.startswith(CLONED_VOICE_PREFIXES):
+        return "seed-icl-2.0"
+    return "seed-tts-2.0"
+
 
 @dataclass(frozen=True)
 class Auth:

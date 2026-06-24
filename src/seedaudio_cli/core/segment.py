@@ -5,7 +5,9 @@ from __future__ import annotations
 _SENTENCE_END = set("。！？；!?;\n")
 _CLAUSE_END = set("，,、：:")
 
-DEFAULT_MAX_BYTES = 900  # margin under the ~1024-byte per-request cap
+# The V3 streaming endpoint handles multi-thousand-char text in one request, so
+# this is just a "how big a chunk do you want" default, not an API cap.
+DEFAULT_MAX_BYTES = 1500
 
 
 def _blen(s: str) -> int:

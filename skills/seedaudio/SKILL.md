@@ -20,7 +20,7 @@ metadata:
 - 合成文本 ≠ 阅读文本。为"耳朵"写,不是为"眼睛"写:`3.14` 写成"三点一四","$5" 写成"五美元",用标点控制停顿。
 - 跑合成一律走 `seedaudio-cli`,不手拼 curl,不绕开 envelope/退出码。
 - **Claude 听不见音频**——只能验文件存在 + 大小 + 报元数据,需要"听"时用 `ffprobe` 报时长,别假装听过。
-- 单次请求文本有长度上限(约 1024 字节 ≈ 300 汉字),**长文本必须分段**(见 Part 3.2)。
+- 这是**流式**接口,单次请求就能合成**很长**的整段(实测 2000+ 汉字一把出),普通文章/章节直接 `synthesize --text-file` 即可,**不用分段**;只有超长或要分段编辑时才用 `narrate`(见 Part 3.2)。
 
 ---
 
@@ -106,11 +106,11 @@ seedaudio-cli --jq '.audio_path' synthesize -p "..." --voice vv --out a.mp3
 
 > `--bit-rate` 仅对 mp3 生效。更冷门的参数(`explicit_language` 显式语种、`explicit_dialect` 方言、`use_tag_parser` 标签、`disable_markdown_filter` 等)v1 没做成 flag,用 `--from-json base.json` 传完整 `req_params`,其它 flag 仍可覆盖顶层字段。
 
-## 1.6 文本输入与长度上限
+## 1.6 文本输入与长度
 
 - 短文本用 `-p/--text`;长文本/多行用 `--text-file PATH`(UTF-8)。
-- **单次请求约 1024 字节(≈ 300 汉字)上限**。超了 API 会报错。**长文本必须先按句切段**,每段独立合成,再拼接(见 Part 3.2)。
-- 不确定长度时:中文按"一个汉字约 3 字节"估;接近上限就切。
+- **流式接口,单次请求就能出很长的整段**(实测 2000+ 汉字、6KB 文本一次成功)。普通文章/章节直接 `synthesize --text-file` 一把合成,**不用分段**。
+- 真正超长(上万字)、想分段编辑/重念、或要规避单次 `--timeout` 时,才用 `narrate`(Part 3.2);书本级超长文走官方异步长文本接口(本 CLI 暂未封装)。
 
 ## 1.7 情感、语气与停顿
 
@@ -144,7 +144,7 @@ seedaudio-cli --jq '.audio_path' synthesize -p "..." --voice vv --out a.mp3
 ## 1.11 Red Flags — 出现立即停下
 
 - 我正要 `Read out.mp3` → 停,Read 读不出音频,用 ffprobe 报元数据。
-- 我正要把整篇长文一次性塞进 `-p` → 停,会超长度上限,先按句切段。
+- 我正要为了"长文"去手动切段 → 停,普通长文 `synthesize --text-file` 一次就出整段,只有超长/要分段编辑才用 `narrate`,别无谓拆分。
 - 我正要把数字/符号/英文缩写原样丢给 TTS → 停,先按 Part 2.3 规范化成"读法"。
 - 我正要凭记忆汇报"已生成"→ 停,先确认 `audio_path` 存在 + `bytes` 非零。
 - 我正要给复刻音色用 `--instruct` 但没加 `-m seed-tts-2.0-expressive` → 停,复刻音色的指令需要 expressive。
@@ -178,7 +178,7 @@ seedaudio-cli --jq '.audio_path' synthesize -p "..." --voice vv --out a.mp3
 | resource_id | `seed-tts-2.0`(官方音色)/ `seed-icl-2.0`(复刻音色) |
 | 模型版本(`-m`) | `seed-tts-2.0-standard`(默认,稳/快)/ `seed-tts-2.0-expressive`(强表现力,有波动) |
 | 语种 | 中、英、日、西等 + 多种方言口音(粤语/四川/北京等,需音色支持) |
-| 文本长度 | 单次约 1024 字节(≈300 汉字),超长分段 |
+| 文本长度 | 单次请求可合成很长文本(流式;实测 2000+ 汉字一次出整段);超长用 narrate 或异步长文本接口 |
 | 音频格式 | mp3 / wav / pcm / ogg_opus |
 | 采样率 | 8000–48000 Hz(常用 24000) |
 | 语速/音量 | [-50,100](100=2倍) |
@@ -237,9 +237,9 @@ seedaudio-cli --jq '.audio_path' synthesize -p "..." --voice vv --out a.mp3
 - 方言:选**支持该方言的音色**,再用 `additions.explicit_dialect`。不确定哪些音色支持就查控制台音色库。
 - 小语种台词建议单独成段、单独指定语种,避免与中文混在一句里读串。
 
-## 2.7 长文本分段(超 1024 字节)
+## 2.7 长文本怎么处理
 
-**原理**:按句/段把长文切成每段 ≤ ~300 汉字的小块,逐块合成,跨块保持同一音色/语速/采样率,最后拼接。详细 workflow 见 Part 3.2。
+普通长文(文章/章节)**直接一次合成**(`synthesize --text-file`)——流式接口实测 2000+ 汉字一把出整段,不用分段。只有文本**超长**、想**分段编辑/重念**、或要规避单次 `--timeout` 时,才用 `narrate` 自动切段+拼接(详见 Part 3.2),切段时跨段保持同一音色/语速/采样率。
 
 **切段规则**:
 1. 优先在句号/段落边界切,别从句子中间断开。
@@ -274,7 +274,7 @@ seedaudio-cli --jq '.audio_path' synthesize -p "..." --voice vv --out a.mp3
 
 # Part 3 — 端到端 workflow
 
-## 3.1 单段合成(≤ ~300 汉字)
+## 3.1 单段 / 整段合成(synthesize,含普通长文)
 
 ```
 Step 1: 听用户要念什么 / 什么场景
@@ -297,7 +297,7 @@ seedaudio-cli synthesize -m seed-tts-2.0-standard \
 
 **触发词**:"把这篇文章读出来"、"有声书"、"长文转音频"、"整段念出来"、"几千字配音"。
 
-超过单次上限(~300 汉字)的长文,**优先用 `narrate`**——它内部自动:按标点切段(每段 ≤ `--max-bytes` 字节,默认 900)→ 逐段合成(跨段同音色/同参数)→ 拼接成一个成片。你**不用手动切、不用手写 ffmpeg**。
+**先分清**:普通长文(文章/章节)用 `synthesize --text-file` 一次就出整段,**不用 `narrate`**。`narrate` 是给这几种情况的:① 文本**超长**到单次请求扛不住或超 `--timeout`;② 想**分段编辑**(某段重念用 `--keep-segments` 只补那段);③ 要**确定性分块**。它自动:按标点切段(每段 ≤ `--max-bytes`,默认 1500)→ 逐段同音色/同参数合成 → 拼成一个成片,你**不用手动切、不用手写 ffmpeg**。
 
 ```bash
 # 先按 Part 2.3 把长文规范化(数字/符号展开、停顿标点),写进一个 txt
@@ -314,7 +314,7 @@ seedaudio-cli narrate \
 **拼接方式**:装了 `ffmpeg` 就用 ffmpeg(支持 mp3/wav/ogg);没装 ffmpeg 时 `--encoding wav` 或 `pcm` 用标准库无依赖拼接,`mp3`/`ogg_opus` 会**直接报 `INVALID_INPUT`** 让你装 ffmpeg 或换 wav——不会偷偷产出撕裂文件。
 
 **关键 flag**:
-- `--max-bytes N`:每段字节上限(默认 900,留了余量;API 硬上限 ~1024)。
+- `--max-bytes N`:每段字节上限(默认 1500;这是"想多大块"而非 API 限制——接口单次能吃更长)。
 - `--keep-segments`:保留分段文件到 `<out>.segments/`,某段不满意只重念那一段再重拼;不传则用临时目录、拼完即删。
 - `--encoding`:长文+无 ffmpeg 选 `wav`;有 ffmpeg 默认 mp3 即可。
 - 文本规范化仍是你的活——`narrate` 只切不改写,数字/符号/多音字要先按 Part 2.3 处理好。
@@ -324,31 +324,42 @@ seedaudio-cli narrate \
 - ✅ 先规范化文本(数字/符号/多音字),再交给 `narrate`
 - ✅ 长文**复述切段预期**给用户(可先 `--dry-run` 看 `segments` 和每段 `preview`)
 - ✅ 重念用 `--keep-segments`,只补那一段
-- ❌ 把整篇塞进 `synthesize -p`(会超长度上限报错)——长文走 `narrate`
+- ❌ 普通长文还非要拆 `narrate`——`synthesize --text-file` 一次就够,别无谓分段
 - ❌ 在 `narrate` 里中途想换音色/语速(整篇统一;要换风格就拆成多次 `narrate` 再自己拼)
 - ❌ 没装 ffmpeg 还硬要 mp3 长文——换 `--encoding wav`
 
 > **手动模式(可选,需要逐段精细控制时)**:也可以自己用 `synthesize` 逐段(每段统一 `--voice/--encoding/--sample-rate`)落到 `seg-0{i}.wav`,再 `ffmpeg -f concat -safe 0 -i list.txt -c copy final.wav` 拼。`narrate` 就是把这套固化了,常规长文不必手动。
 
-## 3.3 多角色对话配音
+## 3.3 多角色对话配音:`dialogue`
 
-每个角色固定一个音色,**逐句**按角色分别合成,再按对话顺序拼接:
+**触发词**:"多角色配音"、"对话配音"、"剧本配音"、"每个人不同声音"、"广播剧"。
 
-```bash
-# 旁白
-seedaudio-cli synthesize -p "夜深了,她推开门。" --voice zh_male_yangguangqingnian_uranus_bigtts \
-  --encoding wav --sample-rate 24000 --out dlg/01-narr.wav
-# 角色 A(温柔)
-seedaudio-cli synthesize -p "你回来啦?" --voice zh_female_wenrouxiaoya_uranus_bigtts \
-  --instruct "用温柔关切的语气说" --encoding wav --sample-rate 24000 --out dlg/02-a.wav
-# 角色 B(沉稳)
-seedaudio-cli synthesize -p "嗯,路上堵了很久。" --voice zh_male_liufei_uranus_bigtts \
-  --encoding wav --sample-rate 24000 --out dlg/03-b.wav
-# 再用 ffmpeg concat 按 01→02→03 顺序拼接
+一条命令吃一个**剧本**(每行 `角色: 台词`)+ 一份**角色→音色**映射,逐行按角色音色合成,按剧本顺序拼成一段。
+
+剧本 `play.txt`:
+```
+# 注释行(# 开头)和空行会被忽略
+旁白: 夜已经很深了,公寓的门被轻轻推开。
+小美: 你怎么才回来呀,我都等你好久了。
+阿强: 路上堵得厉害,对不住。
 ```
 
-- 所有段**统一编码 / 采样率**,只换音色和语气。
-- 角色与音色的映射一次定好,全程别换(同一角色换音色会"换人")。
+```bash
+seedaudio-cli dialogue --script play.txt \
+  --voice 旁白=zh_male_xuanyijieshuo_uranus_bigtts \
+  --voice 小美=zh_female_wenrouxiaoya_uranus_bigtts \
+  --voice 阿强=zh_male_liufei_uranus_bigtts \
+  --instruct 小美="用温柔、略带撒娇的语气说" \
+  --keep-segments --out play.mp3
+```
+
+要点:
+- `--voice 角色=音色ID` 可重复;每个出现的角色都必须有映射,缺了报 `INVALID_INPUT`(会列出缺哪个)。
+- `--instruct 角色=指令` 可重复,给某角色固定语气;官方音色直接用,复刻音色要配 `-m seed-tts-2.0-expressive`。
+- **resource_id 自动按音色推断**:`S_*`/`ICL_*`/`saturn_*` 走 `seed-icl-2.0`(复刻),其余 `seed-tts-2.0`——所以**一个剧本里官方音色和你的复刻音色可以混用**,不用手动切 `--resource-id`。
+- 编码/采样率全剧统一(命令级 `--encoding`/`--sample-rate`),只有音色和语气随角色变。
+- 角色↔音色映射一次定好别换(同角色换音色 = 换人);`--keep-segments` 把每行音频留在 `<out>.segments/`,某句不满意只重做那行。
+- 也可以不写文件,用 `-p "旁白: ...\n小美: ..."` 直接传剧本。
 
 ---
 
@@ -363,7 +374,7 @@ seedaudio-cli synthesize -p "嗯,路上堵了很久。" --voice zh_male_liufei_u
 1. **音色/角色**:男声/女声、风格(沉稳/温柔/活泼/播报),或具体 speaker id。不确定就 `voices` 列几个给用户挑。
 2. **语气情感**:平述 / 开心 / 安抚 / 播报 / 悬念…(→ `--instruct`)。
 3. **格式**:mp3(通用)还是 wav(要二次处理/拼接);采样率。
-4. **长度**:短句 / 长文(>300 汉字 → 走 3.2 分段)。
+4. **长度/形态**:短句或普通长文都用 `synthesize`(一次出整段);超长或要分段编辑走 `narrate`(3.2);多角色对话走 `dialogue`(3.3)。
 
 ### Step 3 — 规范化文本
 按 Part 2.3 把数字/符号/缩写展开,按 2.4 补停顿标点,必要时换同音字,并准备"优化问题"披露改动。
@@ -386,7 +397,7 @@ seedaudio-cli synthesize -p "嗯,路上堵了很久。" --voice zh_male_liufei_u
 - **Claude 听不见音频**:验文件 + 大小 + 报元数据 + 可选 ffprobe;别假装听过,别 Read 音频文件。
 - **鉴权是 `X-Api-Key`**(语音技术控制台),不是 Seedance 的 `ARK_API_KEY`。
 - **音色 id 以控制台音色库为准**;`voices` 只是精选子集;复刻音色走 `resource_id=seed-icl-2.0`。
-- **长文本必须分段**(单次约 1024 字节/300 汉字),跨段统一音色/语速/编码/采样率,再拼接。
+- **普通长文一次合成**(流式接口,实测 2000+ 汉字);只有超长/要分段编辑才 `narrate`,跨段统一音色/语速/编码/采样率。多角色对话用 `dialogue`,角色↔音色映射固定。
 - **复刻音色用 `--instruct`/标签**需要 `-m seed-tts-2.0-expressive`;要稳用 `standard`。
 - **全局 flag 放子命令前**(`--dry-run`/`--jq`/`--profile`/`--api-key`/`--resource-id`)。
 - **拼接用无损 wav**,统一参数;别用有损 mp3 反复拼。

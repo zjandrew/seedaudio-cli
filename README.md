@@ -77,13 +77,21 @@ seedaudio-cli synthesize -p "新闻播报示例" --voice zh_male_liufei_uranus_b
 seedaudio-cli synthesize -p "今天真是太开心啦" --voice zh_female_vv_uranus_bigtts \
   -m seed-tts-2.0-expressive --instruct "用特别开心、撒娇的语气说" --out happy.mp3
 
-# Long text (auto-split into segments, synthesize each, concatenate into one file)
-seedaudio-cli narrate --text-file chapter1.txt --voice zh_male_xuanyijieshuo_uranus_bigtts \
-  --silence-ms 300 --out chapter1.mp3
+# Long text — the streaming endpoint handles multi-thousand-char text in ONE request,
+# so a whole article/chapter just works with synthesize:
+seedaudio-cli synthesize --text-file chapter1.txt --voice zh_male_xuanyijieshuo_uranus_bigtts --out chapter1.mp3
+
+# narrate is for *very* long text, per-segment editing (--keep-segments), or --timeout
+# control: it auto-splits on punctuation, synthesizes each chunk, and concatenates.
+seedaudio-cli narrate --text-file book.txt --voice zh_male_xuanyijieshuo_uranus_bigtts \
+  --silence-ms 300 --keep-segments --out book.mp3
 # (ffmpeg used for concat when present; --encoding wav/pcm concatenates with no ffmpeg)
 
-# Single short utterance from a file
-seedaudio-cli synthesize --text-file note.txt --voice zh_male_yangguangqingnian_uranus_bigtts --out note.mp3
+# Multi-role dialogue: each line `角色: 台词`, mapped to a voice per role
+seedaudio-cli dialogue --script play.txt \
+  --voice 旁白=zh_male_xuanyijieshuo_uranus_bigtts \
+  --voice 小美=zh_female_wenrouxiaoya_uranus_bigtts \
+  --instruct 小美="用温柔的语气说" --out play.mp3
 
 # Word-level timestamps alongside the audio
 seedaudio-cli synthesize -p "字幕对齐示例" --voice zh_female_vv_uranus_bigtts \
