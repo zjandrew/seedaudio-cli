@@ -103,9 +103,10 @@ seedaudio-cli --jq '.audio_path' synthesize -p "..." --voice vv --out a.mp3
 
 | 意图 | 推荐参数 |
 |---|---|
-| 通用人声 mp3 | `--encoding mp3 --sample-rate 24000`(默认即可) |
-| 高保真存档 | `--encoding wav --sample-rate 44100` |
-| 后续要二次处理/拼接 | `--encoding wav`(无损,拼接不掉音质) |
+| 试听 / 语音便签 / 内部用 | `--encoding mp3 --sample-rate 24000`(默认即可) |
+| 视频配音 / 成片音轨 / 对外发布 | `--encoding mp3 --sample-rate 48000 --bit-rate 192000`(默认 24k/~64kbps 经平台二次压缩会发糊;视频音轨标准 48kHz) |
+| 进剪辑 / 二次处理 / 拼接 | `--encoding wav --sample-rate 48000`(无损母版,压缩留到最后导出那一次) |
+| 高保真存档 / 音乐 | `--encoding wav --sample-rate 44100` |
 | 念快一点 / 慢一点 | `--speech-rate 20` / `--speech-rate -20`(范围 [-50,100],100=2倍速) |
 | 音量大一点 | `--loudness-rate 20`(范围 [-50,100]) |
 | 音调高/低 | `--pitch 3` / `--pitch -3`(范围 [-12,12]) |
