@@ -121,7 +121,6 @@ def dialogue(
         build_req_params(text="占位", params=_params_for(r))
 
     ffmpeg = _concat.have_ffmpeg()
-    _concat.check_concat_support(encoding, ffmpeg=ffmpeg)
 
     if g.get("dry_run"):
         emit(
@@ -137,6 +136,9 @@ def dialogue(
             ),
         )
         return
+
+    # A real run concatenates, so ffmpeg must be present for mp3/ogg (wav/pcm are stdlib).
+    _concat.check_concat_support(encoding, ffmpeg=ffmpeg)
 
     auth = resolve_auth(
         cli_api_key=g.get("api_key"),
