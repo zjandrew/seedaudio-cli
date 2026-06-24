@@ -96,6 +96,38 @@ def test_subtitle_writes_words(
     assert json.loads(sub.read_text())[0]["word"] == "你好"
 
 
+def test_resource_id_inferred_from_cloned_voice(
+    tmp_config: Path, tmp_path: Path, fake_tts: FakeStream
+) -> None:
+    res = CliRunner().invoke(
+        root, ["synthesize", "-p", "hi", "--voice", "S_abc123", "--out", str(tmp_path / "a.mp3")]
+    )
+    assert res.exit_code == 0, res.output
+    assert _data(res.output)["resource_id"] == "seed-icl-2.0"
+    assert fake_tts.calls[0]["headers"]["X-Api-Resource-Id"] == "seed-icl-2.0"
+
+
+def test_resource_id_flag_overrides_inference(
+    tmp_config: Path, tmp_path: Path, fake_tts: FakeStream
+) -> None:
+    res = CliRunner().invoke(
+        root,
+        [
+            "--resource-id",
+            "seed-tts-2.0",
+            "synthesize",
+            "-p",
+            "hi",
+            "--voice",
+            "S_abc123",
+            "--out",
+            str(tmp_path / "a.mp3"),
+        ],
+    )
+    assert res.exit_code == 0, res.output
+    assert fake_tts.calls[0]["headers"]["X-Api-Resource-Id"] == "seed-tts-2.0"
+
+
 def test_default_voice_from_profile(tmp_config: Path, tmp_path: Path, fake_tts: FakeStream) -> None:
     # Seed a config with a default_voice so synthesize works without --voice.
     runner = CliRunner()

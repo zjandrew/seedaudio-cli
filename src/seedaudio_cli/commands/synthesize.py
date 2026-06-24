@@ -12,8 +12,8 @@ import click
 
 import seedaudio_cli.core.synth as _synth_mod
 from seedaudio_cli.__main__ import emit
-from seedaudio_cli.core.client import resolve_auth
-from seedaudio_cli.core.config import DEFAULT_ENDPOINT, DEFAULT_RESOURCE_ID, load, resolve_profile
+from seedaudio_cli.core.client import Auth, resolve_auth, resource_id_for_voice
+from seedaudio_cli.core.config import DEFAULT_ENDPOINT, load, resolve_profile
 from seedaudio_cli.core.naming import make_stem, resolve_out_path
 from seedaudio_cli.core.request import RequestParams, build_req_params, ext_for
 from seedaudio_cli.framework.envelope import Success
@@ -115,7 +115,10 @@ def synthesize(
         base_params = json.loads(Path(from_json).read_text())
     req_params: dict[str, Any] = {**base_params, **build_req_params(text=text, params=params)}
 
-    resource_id = g.get("resource_id") or profile.resource_id or DEFAULT_RESOURCE_ID
+    # resource_id: explicit flag > profile pin > inferred from the voice (official vs cloned).
+    resource_id = (
+        g.get("resource_id") or profile.resource_id or resource_id_for_voice(chosen_voice or "")
+    )
     endpoint = (g.get("endpoint") or profile.endpoint or DEFAULT_ENDPOINT).rstrip("/")
 
     if g.get("dry_run"):
@@ -140,6 +143,9 @@ def synthesize(
         profile_endpoint=profile.endpoint,
         profile_resource_id=profile.resource_id,
     )
+    # Apply the inferred/pinned resource_id resolved above (resolve_auth would
+    # otherwise fall back to the built-in default for unpinned profiles).
+    auth = Auth(api_key=auth.api_key, endpoint=auth.endpoint, resource_id=resource_id)
 
     request_id = str(uuid.uuid4())
     ext = ext_for(encoding)

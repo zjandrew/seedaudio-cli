@@ -8,7 +8,6 @@ import pytest
 
 from seedaudio_cli.core.config import (
     DEFAULT_ENDPOINT,
-    DEFAULT_RESOURCE_ID,
     Config,
     Profile,
     load,
@@ -23,7 +22,7 @@ def test_load_missing_returns_default(tmp_path: Path) -> None:
     cfg = load(tmp_path / "nope.json")
     assert cfg.active == "default"
     assert cfg.profiles["default"].endpoint == DEFAULT_ENDPOINT
-    assert cfg.profiles["default"].resource_id == DEFAULT_RESOURCE_ID
+    assert cfg.profiles["default"].resource_id is None  # auto: inferred per voice
 
 
 def test_save_then_load_roundtrip(tmp_path: Path) -> None:

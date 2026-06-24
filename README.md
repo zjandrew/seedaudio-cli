@@ -48,7 +48,9 @@ export SEEDAUDIO_ENDPOINT=https://openspeech.bytedance.com   # optional
 # Or programmatic:
 seedaudio-cli config set api_key ...
 seedaudio-cli config set default_voice zh_female_vv_uranus_bigtts
-seedaudio-cli config set resource_id seed-tts-2.0            # seed-icl-2.0 for cloned voices
+# resource_id is auto-inferred from the voice (S_/ICL_/saturn_ -> seed-icl-2.0, else
+# seed-tts-2.0); set it only to pin/override globally:
+seedaudio-cli config set resource_id seed-icl-2.0           # optional global pin
 ```
 
 Priority: CLI flag > env var > config file > built-in default.

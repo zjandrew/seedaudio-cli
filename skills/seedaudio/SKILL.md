@@ -39,7 +39,8 @@ seedaudio-cli config list                 # 列所有 profile,标 active
 seedaudio-cli config use <name>           # 切 active
 seedaudio-cli config add <name>           # 向导式新增(prompt 走 stderr,stdout 仍是干净 envelope)
 seedaudio-cli config set default_voice zh_female_vv_uranus_bigtts
-seedaudio-cli config set resource_id seed-icl-2.0       # 用复刻音色时
+# resource_id 一般不用设(按音色自动推断);只有想全局钉死某个 resource 时才设
+seedaudio-cli config set resource_id seed-icl-2.0       # 可选:全局钉死(覆盖自动推断)
 seedaudio-cli --profile <name> synthesize ...           # 单次覆盖,不改 active
 seedaudio-cli config show [<name>]        # 查看(api_key 已脱敏)
 ```
@@ -83,12 +84,12 @@ seedaudio-cli --jq '.audio_path' synthesize -p "..." --voice vv --out a.mp3
 
 ## 1.4 音色选型(`--voice` / `resource_id`)
 
-- 音色由 `--voice <speaker_id>` 指定(可在 profile 里设 `default_voice` 省略)。**官方音色**走 `resource_id=seed-tts-2.0`;**自己复刻的音色**(id 形如 `S_xxxx`)走 `resource_id=seed-icl-2.0`。
+- 音色由 `--voice <speaker_id>` 指定(可在 profile 里设 `default_voice` 省略)。**`resource_id` 会按音色自动推断**:`S_*`/`ICL_*`/`saturn_*`(复刻音色)→ `seed-icl-2.0`,其余官方音色 → `seed-tts-2.0`。`synthesize`/`dialogue` 都自动处理,**不用手动加 `--resource-id`**;只有遇到推断不了的特殊 resource(如新资源类型)才用 `--resource-id` 显式覆盖。
 - `seedaudio-cli voices` 内置的是**精选子集**(可能过时),**权威清单在[控制台音色库](https://console.volcengine.com/speech/new/voices)**——给用户用音色前,不确定就让用户去控制台确认 id。
 - 选音色优先级:用户指定 > profile `default_voice` > 按场景从 voices 里挑(见 `references/voices-and-style.md` 的场景对照)。
-- **用"我的声音/本人音色"复刻合成**:用 `S_14TMJlS62`(本仓 owner 的复刻音色),并加 `--resource-id seed-icl-2.0`;要用指令/标签再加 `-m seed-tts-2.0-expressive`:
+- **用"我的声音/本人音色"复刻合成**:直接用 `S_14TMJlS62`(本仓 owner 的复刻音色),resource_id 自动走 `seed-icl-2.0`;要用指令/标签再加 `-m seed-tts-2.0-expressive`:
   ```bash
-  seedaudio-cli --resource-id seed-icl-2.0 synthesize -p "用我的声音念这句" --voice S_14TMJlS62 --out mine.mp3
+  seedaudio-cli synthesize -p "用我的声音念这句" --voice S_14TMJlS62 --out mine.mp3
   ```
 
 ## 1.5 参数选型(CLI flag)

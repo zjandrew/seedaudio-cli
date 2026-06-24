@@ -18,7 +18,8 @@ DEFAULT_CONFIG_PATH = Path.home() / ".seedaudio-cli" / "config.json"
 class Profile:
     api_key: str | None = None
     endpoint: str = DEFAULT_ENDPOINT
-    resource_id: str = DEFAULT_RESOURCE_ID
+    # None = auto: infer the resource_id from the voice id (official vs cloned).
+    resource_id: str | None = None
     default_voice: str | None = None
     default_model: str | None = None
 
@@ -54,7 +55,7 @@ def load(path: Path = DEFAULT_CONFIG_PATH) -> Config:
             name: Profile(
                 api_key=p.get("api_key"),
                 endpoint=p.get("endpoint", DEFAULT_ENDPOINT),
-                resource_id=p.get("resource_id", DEFAULT_RESOURCE_ID),
+                resource_id=p.get("resource_id"),
                 default_voice=p.get("default_voice"),
                 default_model=p.get("default_model"),
             )

@@ -9,7 +9,6 @@ import click
 from seedaudio_cli.__main__ import emit
 from seedaudio_cli.core.config import (
     DEFAULT_ENDPOINT,
-    DEFAULT_RESOURCE_ID,
     Profile,
     load,
     mask_api_key,
@@ -19,9 +18,9 @@ from seedaudio_cli.framework.envelope import Success
 from seedaudio_cli.framework.errors import CliError
 
 VALID_SET_KEYS = {"api_key", "endpoint", "resource_id", "default_voice", "default_model"}
+# unset → these fields reset to their default; others (incl. resource_id) reset to None (auto).
 _UNSET_DEFAULTS: dict[str, str | None] = {
     "endpoint": DEFAULT_ENDPOINT,
-    "resource_id": DEFAULT_RESOURCE_ID,
 }
 
 
@@ -149,13 +148,14 @@ def _prompt_profile(*, require_key: bool = False) -> Profile:
         err=True,
     )
     endpoint = click.prompt("Endpoint", default=DEFAULT_ENDPOINT, show_default=True, err=True)
+    # resource_id defaults to auto (inferred per voice); only pin it if the user types one.
     resource_id = click.prompt(
-        "Resource id", default=DEFAULT_RESOURCE_ID, show_default=True, err=True
+        "Resource id (blank = auto by voice)", default="", show_default=False, err=True
     )
     voice = click.prompt("Default voice (speaker id)", default="", show_default=False, err=True)
     return Profile(
         api_key=api_key or None,
         endpoint=endpoint,
-        resource_id=resource_id,
+        resource_id=resource_id or None,
         default_voice=voice or None,
     )

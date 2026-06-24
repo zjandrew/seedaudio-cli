@@ -166,8 +166,8 @@ def dialogue(
         total_words = 0
         for i, ln in enumerate(lines, start=1):
             voice = voices[ln.role]
-            # Explicit --resource-id wins; otherwise infer per voice (cloned vs official).
-            resource_id = cli_resource_id or resource_id_for_voice(voice)
+            # --resource-id flag > profile pin > inferred per voice (cloned vs official).
+            resource_id = cli_resource_id or profile.resource_id or resource_id_for_voice(voice)
             line_auth = Auth(api_key=auth.api_key, endpoint=auth.endpoint, resource_id=resource_id)
             click.echo(f"[{i}/{len(lines)}] {ln.role} ({voice})...", err=True)
             req_params = build_req_params(text=ln.text, params=_params_for(ln.role))

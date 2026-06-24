@@ -24,7 +24,7 @@ def test_set_show_use_list(tmp_config: Path) -> None:
     shown = _data(runner.invoke(root, ["config", "show"]).output)
     assert shown["default_voice"] == "vv"
     assert shown["api_key"] == "sk-***3456"  # masked
-    assert shown["resource_id"] == "seed-tts-2.0"
+    assert shown["resource_id"] is None  # auto: inferred per voice unless pinned
 
     listed = _data(runner.invoke(root, ["config", "list"]).output)
     assert listed["active"] == "default"
@@ -43,11 +43,18 @@ def test_add_and_use_profile(tmp_config: Path) -> None:
     assert shown["default_voice"] == "myvoice"
 
 
-def test_unset_resets_to_default(tmp_config: Path) -> None:
+def test_unset_resource_id_returns_to_auto(tmp_config: Path) -> None:
     runner = CliRunner()
     runner.invoke(root, ["config", "set", "resource_id", "seed-icl-2.0"])
     out = _data(runner.invoke(root, ["config", "unset", "resource_id"]).output)
-    assert out["resource_id"] == "seed-tts-2.0"
+    assert out["resource_id"] is None  # auto
+
+
+def test_unset_endpoint_resets_to_default(tmp_config: Path) -> None:
+    runner = CliRunner()
+    runner.invoke(root, ["config", "set", "endpoint", "https://custom.example"])
+    out = _data(runner.invoke(root, ["config", "unset", "endpoint"]).output)
+    assert out["endpoint"] == "https://openspeech.bytedance.com"
 
 
 def test_set_unknown_key_rejected(tmp_config: Path) -> None:
